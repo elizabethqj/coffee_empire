@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Tema oscuro (por defecto) ────────────────────────────────────────────── */
+:root {
+  --surface-primary:   15  17  23;
+  --surface-secondary: 26  29  39;
+  --surface-card:      34  38  58;
+  --surface-elevated:  42  47  69;
+
+  --accent-primary:    245 158  11;
+  --accent-secondary:   59 130 246;
+  --accent-success:     16 185 129;
+
+  --status-ok:          16 185 129;
+  --status-success:     16 185 129;
+  --status-warn:       245 158  11;
+  --status-error:      239  68  68;
+
+  --text-primary:      241 245 249;
+  --text-secondary:    203 213 225;
+  --text-muted:        148 163 184;
+
+  --border-default:     53  59  85;
+  --border-strong:      74  82 112;
+}
+
+/* ── Tema claro ────────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --surface-primary:   241 245 249;
+  --surface-secondary: 255 255 255;
+  --surface-card:      255 255 255;
+  --surface-elevated:  226 232 240;
+
+  --accent-primary:    146  64  14;
+  --accent-secondary:   29  78 216;
+  --accent-success:      4 120  87;
+
+  --status-ok:           4 120  87;
+  --status-success:      4 120  87;
+  --status-warn:        146  64  14;
+  --status-error:       185  28  28;
+
+  --text-primary:        15  23  42;
+  --text-secondary:      51  65  85;
+  --text-muted:         100 116 139;
+
+  --border-default:    203 213 225;
+  --border-strong:     148 163 184;
+}
+
+@layer base {
+  html,
+  body {
+    @apply bg-surface-primary text-text-primary;
+    font-family: 'Inter', system-ui, sans-serif;
+    overflow: hidden;
+  }
+
+  #root {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-surface-secondary;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border-strong rounded-full;
+  }
+}
+
+@layer utilities {
+  .panel {
+    @apply bg-surface-card border border-border-default rounded-lg;
+  }
+
+  .btn-primary {
+    @apply bg-accent-primary text-surface-primary font-semibold px-4 py-2 rounded-md
+           hover:brightness-110 active:brightness-90 transition-all duration-150
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-surface-elevated text-text-primary border border-border-default font-medium
+           px-4 py-2 rounded-md hover:border-border-strong transition-all duration-150
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .stat-value {
+    @apply font-mono text-lg font-bold text-text-primary;
+  }
+
+  .stat-label {
+    @apply text-xs text-text-muted uppercase tracking-wide;
+  }
+}
