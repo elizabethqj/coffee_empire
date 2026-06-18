@@ -21,20 +21,32 @@ const PHASER_COLORS = {
 }
 
 const AREA_CONFIGS: PlantAreaConfig[] = [
-  { id: 'mp-warehouse', label: 'Almacén MP', color: 0x3b82f6, itemIds: ['green-beans', 'packaging-material'] },
+  {
+    id: 'mp-warehouse',
+    label: 'Almacén MP',
+    color: 0x3b82f6,
+    itemIds: ['green-beans', 'packaging-material'],
+  },
   { id: 'roasting', label: 'Tostión', color: 0xf59e0b, itemIds: ['roasted-beans'] },
   { id: 'grinding', label: 'Molido', color: 0xf59e0b, itemIds: ['ground-coffee'] },
   { id: 'packaging', label: 'Empaque', color: 0x8b5cf6, itemIds: [] },
   { id: 'pt-warehouse', label: 'Almacén PT', color: 0x10b981, itemIds: ['bag-200g'] },
 ]
 
-// Max capacity values per area for the fill bar (sum of area's items' maxCapacity)
+// Max capacity values per area for the fill bar
 const AREA_MAX_CAP: Record<string, number> = {
   'mp-warehouse': 700,
-  'roasting': 100,
-  'grinding': 100,
-  'packaging': 100,
+  roasting: 100,
+  grinding: 100,
+  packaging: 100,
   'pt-warehouse': 300,
+}
+
+// CIF cost per tick per area (approx — for the live cost label)
+const AREA_COST_PER_TICK: Record<string, number> = {
+  roasting: 350,
+  grinding: 280,
+  packaging: 180,
 }
 
 export class PlantScene extends Phaser.Scene {
@@ -43,6 +55,7 @@ export class PlantScene extends Phaser.Scene {
   private bg: Phaser.GameObjects.Graphics | null = null
   private currentTheme: Theme = 'dark'
   private lastOrders: ProductionOrder[] = []
+  private activeAreaIds: Set<string> = new Set()
 
   constructor() {
     super({ key: 'Plant' })
@@ -63,13 +76,14 @@ export class PlantScene extends Phaser.Scene {
 
   shutdown(): void {
     audioManager.unbind()
+    for (const area of this.areas.values()) {
+      area.stopContinuousEffects()
+    }
   }
 
   private layoutAreas(): void {
     const { width, height } = this.scale
 
-    // Diagonal staircase layout:
-    // Each step is +stepX to the right and alternates +/- stepY for the "iso" feel
     const stepX = width * 0.18
     const originX = width * 0.1
     const baseY = height * 0.42
@@ -126,9 +140,12 @@ export class PlantScene extends Phaser.Scene {
       const my = (a.y + b.y) / 2
       this.connections.fillStyle(col, 0.7)
       this.connections.fillTriangle(
-        mx + Math.cos(angle) * 10, my + Math.sin(angle) * 10,
-        mx + Math.cos(angle - 2.4) * 8, my + Math.sin(angle - 2.4) * 8,
-        mx + Math.cos(angle + 2.4) * 8, my + Math.sin(angle + 2.4) * 8
+        mx + Math.cos(angle) * 10,
+        my + Math.sin(angle) * 10,
+        mx + Math.cos(angle - 2.4) * 8,
+        my + Math.sin(angle - 2.4) * 8,
+        mx + Math.cos(angle + 2.4) * 8,
+        my + Math.sin(angle + 2.4) * 8
       )
     }
   }
@@ -193,6 +210,37 @@ export class PlantScene extends Phaser.Scene {
     const prevCompleted = this.lastOrders.filter((o) => o.status === 'completed').map((o) => o.id)
     this.lastOrders = orders
 
+    // Determine which areas have active orders
+    const nowActive = new Set<string>()
+    for (const order of orders) {
+      if (order.status !== 'active') continue
+      const areaId = this.recipeToAreaId(order.recipeId)
+      if (areaId) nowActive.add(areaId)
+
+      // Update live progress + cost label
+      const area = this.areas.get(areaId ?? '')
+      if (area) {
+        area.updateLiveLabel(order.progress, AREA_COST_PER_TICK[areaId ?? ''] ?? 0)
+      }
+    }
+
+    // Start/stop continuous effects per area
+    for (const [areaId, area] of this.areas) {
+      if (nowActive.has(areaId) && !this.activeAreaIds.has(areaId)) {
+        area.startContinuousEffects()
+        audioManager.startAmbient()
+      } else if (!nowActive.has(areaId) && this.activeAreaIds.has(areaId)) {
+        area.stopContinuousEffects()
+        area.updateLiveLabel(0, 0)
+      }
+    }
+
+    if (nowActive.size === 0 && this.activeAreaIds.size > 0) {
+      audioManager.stopAmbient()
+    }
+
+    this.activeAreaIds = nowActive
+
     // Trigger resource flow animation for newly completed orders
     for (const order of orders) {
       if (order.status === 'completed' && !prevCompleted.includes(order.id)) {
@@ -206,15 +254,79 @@ export class PlantScene extends Phaser.Scene {
     this.scene.get('UI')?.events?.emit('show-alert', title, description)
   }
 
+  /**
+   * Animate a cash flow particle (money entering/leaving) from/to an area.
+   * type 'debit' → red $ flies out toward top; 'credit' → green $ flies in from top.
+   */
+  flashCashFlow(type: 'debit' | 'credit', amount: number, areaId: string): void {
+    const area = this.areas.get(areaId)
+    if (!area) return
+
+    const color = type === 'debit' ? 0xef4444 : 0x10b981
+    const label =
+      type === 'debit' ? `-$${Math.round(amount / 1000)}k` : `+$${Math.round(amount / 1000)}k`
+
+    const tx = this.add
+      .text(area.anchor.x, area.anchor.y - 20, label, {
+        fontSize: '11px',
+        color: type === 'debit' ? '#ef4444' : '#10b981',
+        fontFamily: 'monospace',
+        fontStyle: 'bold',
+        stroke: '#000000',
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(10)
+
+    const g = this.add.graphics().setDepth(10)
+    g.fillStyle(color, 0.9)
+    g.fillCircle(area.anchor.x + Phaser.Math.Between(-10, 10), area.anchor.y, 4)
+
+    const dy = type === 'debit' ? -50 : -40
+
+    this.tweens.add({
+      targets: [tx, g],
+      y: `${dy}`,
+      alpha: 0,
+      duration: 900,
+      ease: 'Sine.easeOut',
+      onComplete: () => {
+        tx.destroy()
+        g.destroy()
+      },
+    })
+
+    if (type === 'debit') {
+      audioManager.play('purchase')
+    } else {
+      audioManager.play('sale')
+    }
+  }
+
+  /**
+   * Pulse-highlight an area (used by onboarding).
+   */
+  highlightArea(areaId: string, durationMs = 2000): void {
+    this.areas.get(areaId)?.flashHighlight(durationMs)
+  }
+
+  clearHighlight(): void {
+    // flashHighlight is self-expiring — no explicit clear needed
+  }
+
   // ── Helpers ──────────────────────────────────────────────────────────────────
 
   private recipeMatchesArea(recipeId: string, areaId: string): boolean {
+    return this.recipeToAreaId(recipeId) === areaId
+  }
+
+  private recipeToAreaId(recipeId: string): string | null {
     const map: Record<string, string> = {
       roasting: 'roasting',
       grinding: 'grinding',
       packaging: 'packaging',
     }
-    return map[recipeId] === areaId
+    return map[recipeId] ?? null
   }
 
   private animateOrderComplete(recipeId: string): void {

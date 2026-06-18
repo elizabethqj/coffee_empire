@@ -6,6 +6,7 @@ import { useFinanceStore } from './financeStore'
 const EMPTY: CostStatement = {
   initialMP: 0,
   purchases: 0,
+  availableMP: 0,
   finalMP: 0,
   materialUsed: 0,
   mod: 0,
@@ -15,6 +16,7 @@ const EMPTY: CostStatement = {
   finalWIP: 0,
   finishedGoodsCost: 0,
   initialPT: 0,
+  availableForSale: 0,
   finalPT: 0,
   salesCost: 0,
   revenue: 0,
@@ -43,8 +45,7 @@ export const useCostStatementStore = create<CostStatementStore>((set, get) => ({
   history: [],
 
   recalculate: () => {
-    const { items, periodStartSnapshot, totalPurchasesThisPeriod } =
-      useInventoryStore.getState()
+    const { items, periodStartSnapshot, totalPurchasesThisPeriod } = useInventoryStore.getState()
     const { state: finance } = useFinanceStore.getState()
 
     const mpIds = Object.values(items)
@@ -71,16 +72,19 @@ export const useCostStatementStore = create<CostStatementStore>((set, get) => ({
     const initialPT = inventoryValue(ptIds, snapshotValues)
 
     // ECPV canonical formulas
-    const materialUsed = initialMP + totalPurchasesThisPeriod - finalMP
+    const availableMP = initialMP + totalPurchasesThisPeriod
+    const materialUsed = availableMP - finalMP
     const productionCost = materialUsed + finance.laborCost + finance.cifCost
     const finishedGoodsCost = initialWIP + productionCost - finalWIP
-    const salesCost = initialPT + finishedGoodsCost - finalPT
+    const availableForSale = finishedGoodsCost + initialPT
+    const salesCost = availableForSale - finalPT
     const profit = finance.revenue - salesCost
 
     set({
       statement: {
         initialMP,
         purchases: totalPurchasesThisPeriod,
+        availableMP,
         finalMP,
         materialUsed,
         mod: finance.laborCost,
@@ -90,6 +94,7 @@ export const useCostStatementStore = create<CostStatementStore>((set, get) => ({
         finalWIP,
         finishedGoodsCost,
         initialPT,
+        availableForSale,
         finalPT,
         salesCost,
         revenue: finance.revenue,

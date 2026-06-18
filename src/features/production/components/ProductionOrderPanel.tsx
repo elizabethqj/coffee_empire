@@ -61,22 +61,32 @@ export function ProductionOrderPanel({ areaId }: Props) {
       const available = items[req.itemId]?.quantity ?? 0
       const needed = req.quantity * quantity
       if (available < needed) {
-        missing.push(`${req.itemId}: necesitas ${needed.toFixed(1)}, tienes ${available.toFixed(1)}`)
+        missing.push(
+          `${req.itemId}: necesitas ${needed.toFixed(1)}, tienes ${available.toFixed(1)}`
+        )
       }
     }
     return { ok: missing.length === 0, missing }
   }
 
   function handleCreate() {
-    if (qty <= 0) { setFeedback('Cantidad debe ser mayor a 0.'); return }
+    if (qty <= 0) {
+      setFeedback('Cantidad debe ser mayor a 0.')
+      return
+    }
     const { ok, missing } = canFulfill(recipe!, qty)
-    if (!ok) { setFeedback(missing.join(' · ')); return }
+    if (!ok) {
+      setFeedback(missing.join(' · '))
+      return
+    }
 
     createOrder(recipe!.id, qty, tick)
     addXP(XP_CREATE_ORDER)
 
     if (user && sessionId) {
-      analyticsService.track('create_order', sessionId, user.uid, tick, { recipeId, qty }).catch(console.error)
+      analyticsService
+        .track('create_order', sessionId, user.uid, tick, { recipeId, qty })
+        .catch(console.error)
     }
 
     setFeedback(`✓ Orden creada: ${qty} unidades de ${recipe!.name}`)
@@ -89,8 +99,16 @@ export function ProductionOrderPanel({ areaId }: Props) {
       <div className="rounded-md border border-border-default p-3 text-xs flex flex-col gap-2">
         <p className="font-semibold text-text-primary">{recipe.name}</p>
         <div className="flex flex-col gap-1 text-text-muted">
-          <span>Duración: <span className="text-text-primary">{recipe.ticksRequired} ticks / lote</span></span>
-          <span>Salida: <span className="text-text-primary">{recipe.outputQuantity} {items[recipe.outputItem]?.name ?? recipe.outputItem}</span> por unidad</span>
+          <span>
+            Duración: <span className="text-text-primary">{recipe.ticksRequired} ticks / lote</span>
+          </span>
+          <span>
+            Salida:{' '}
+            <span className="text-text-primary">
+              {recipe.outputQuantity} {items[recipe.outputItem]?.name ?? recipe.outputItem}
+            </span>{' '}
+            por unidad
+          </span>
         </div>
         <div className="mt-1">
           <p className="text-text-muted mb-1">Materiales requeridos:</p>
@@ -120,7 +138,10 @@ export function ProductionOrderPanel({ areaId }: Props) {
               type="number"
               min={1}
               value={qty}
-              onChange={(e) => { setQty(Number(e.target.value)); setFeedback(null) }}
+              onChange={(e) => {
+                setQty(Number(e.target.value))
+                setFeedback(null)
+              }}
               className="rounded border border-border-default bg-surface-secondary px-2 py-1.5 text-xs text-text-primary focus:border-accent-primary focus:outline-none"
             />
           </div>
@@ -129,7 +150,9 @@ export function ProductionOrderPanel({ areaId }: Props) {
           </button>
         </div>
         {feedback && (
-          <p className={`text-xs rounded px-2 py-1 ${feedback.startsWith('✓') ? 'text-status-success bg-status-success/10' : 'text-status-error bg-status-error/10'}`}>
+          <p
+            className={`text-xs rounded px-2 py-1 ${feedback.startsWith('✓') ? 'text-status-success bg-status-success/10' : 'text-status-error bg-status-error/10'}`}
+          >
             {feedback}
           </p>
         )}
@@ -138,18 +161,57 @@ export function ProductionOrderPanel({ areaId }: Props) {
       {/* Active orders */}
       {activeOrders.length > 0 && (
         <div className="flex flex-col gap-2">
-          <p className="text-xs font-semibold text-text-primary">En producción ({activeOrders.length})</p>
+          <p className="text-xs font-semibold text-text-primary">
+            En producción ({activeOrders.length})
+          </p>
           {activeOrders.map((o) => (
-            <div key={o.id} className="rounded-md border border-border-default p-3 flex flex-col gap-2">
+            <div
+              key={o.id}
+              className="rounded-md border border-border-default p-3 flex flex-col gap-2"
+            >
               <div className="flex justify-between text-xs">
                 <span className="text-text-muted font-mono">{o.id}</span>
                 <span className="text-accent-primary font-semibold">{o.progress.toFixed(0)}%</span>
               </div>
               <ProgressBar value={o.progress} />
-              <div className="flex justify-between text-xs text-text-muted">
-                <span>Costo acumulado</span>
-                <span className="font-mono">{fmt(o.accumulatedMPD + o.accumulatedMOD + o.accumulatedCIF)}</span>
-              </div>
+              {/* WIP cost breakdown — grado de terminación por elemento */}
+              <table className="w-full text-xs font-mono">
+                <thead>
+                  <tr className="text-text-muted">
+                    <th className="text-left font-normal py-0.5">Elemento</th>
+                    <th className="text-right font-normal">Acumulado</th>
+                    <th className="text-right font-normal pl-2">G.T.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr title="MPD se consume completamente al iniciar la orden (100% desde el tick 1)">
+                    <td className="text-text-muted py-0.5">MPD</td>
+                    <td className="text-right text-text-primary">{fmt(o.accumulatedMPD)}</td>
+                    <td className="text-right text-status-ok pl-2">100%</td>
+                  </tr>
+                  <tr>
+                    <td className="text-text-muted py-0.5">MOD</td>
+                    <td className="text-right text-text-primary">{fmt(o.accumulatedMOD)}</td>
+                    <td className="text-right text-accent-primary pl-2">
+                      {o.progress.toFixed(0)}%
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="text-text-muted py-0.5">CIF</td>
+                    <td className="text-right text-text-primary">{fmt(o.accumulatedCIF)}</td>
+                    <td className="text-right text-accent-primary pl-2">
+                      {o.progress.toFixed(0)}%
+                    </td>
+                  </tr>
+                  <tr className="border-t border-border-default">
+                    <td className="text-text-muted font-bold pt-1">Total WIP</td>
+                    <td className="text-right text-text-primary font-bold pt-1">
+                      {fmt(o.accumulatedMPD + o.accumulatedMOD + o.accumulatedCIF)}
+                    </td>
+                    <td className="pl-2" />
+                  </tr>
+                </tbody>
+              </table>
             </div>
           ))}
         </div>

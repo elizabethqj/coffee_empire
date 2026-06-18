@@ -22,15 +22,18 @@ export interface ECPVInputs {
  * Use this for testing formulas in isolation and for display in the ECPV panel.
  */
 export function calculateCostStatement(inputs: ECPVInputs): CostStatement {
-  const materialUsed = inputs.initialMP + inputs.purchases - inputs.finalMP
+  const availableMP = inputs.initialMP + inputs.purchases
+  const materialUsed = availableMP - inputs.finalMP
   const productionCost = materialUsed + inputs.laborCost + inputs.cifCost
   const finishedGoodsCost = inputs.initialWIP + productionCost - inputs.finalWIP
-  const salesCost = inputs.initialPT + finishedGoodsCost - inputs.finalPT
+  const availableForSale = finishedGoodsCost + inputs.initialPT
+  const salesCost = availableForSale - inputs.finalPT
   const profit = inputs.revenue - salesCost
 
   return {
     initialMP: inputs.initialMP,
     purchases: inputs.purchases,
+    availableMP,
     finalMP: inputs.finalMP,
     materialUsed,
 
@@ -45,6 +48,7 @@ export function calculateCostStatement(inputs: ECPVInputs): CostStatement {
     finishedGoodsCost,
 
     initialPT: inputs.initialPT,
+    availableForSale,
     finalPT: inputs.finalPT,
 
     salesCost,
@@ -54,7 +58,6 @@ export function calculateCostStatement(inputs: ECPVInputs): CostStatement {
 }
 
 export function isECPVBalanced(statement: CostStatement): boolean {
-  const recomputed =
-    statement.initialMP + statement.purchases - statement.finalMP
+  const recomputed = statement.initialMP + statement.purchases - statement.finalMP
   return Math.abs(recomputed - statement.materialUsed) < 0.01
 }

@@ -11,6 +11,9 @@ const makeEvent = (id: string, appliedAtTick = 0, duration = 30): DynamicEvent =
   description: 'Test event',
   effectDurationTicks: duration,
   appliedAtTick,
+  responses: [],
+  chosenResponseId: null,
+  pedagogicalNote: '',
 })
 
 describe('gamificationStore', () => {

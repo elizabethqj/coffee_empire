@@ -2,20 +2,84 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import { GameLayout } from '@/layouts/GameLayout'
 import { GameCanvas } from '@/game/GameCanvas'
 import { useAuthStore, useGamificationStore, useUiStore } from '@/store'
+import { useFinanceStore } from '@/store/financeStore'
+import { useProgressStore } from '@/store/progressStore'
 import { sessionService } from '@/services/sessionService'
 import { useAnalyticsWatcher } from '@/services/useAnalyticsWatcher'
 import { PANEL_UNLOCK_LEVEL, PANEL_UNLOCK_DESCRIPTION } from '@/constants/gameBalance'
 
-const ECPVFlow         = lazy(() => import('@/features/cost-statement/components/ECPVFlow').then((m) => ({ default: m.ECPVFlow })))
-const Assessment       = lazy(() => import('@/features/education/components/Assessment').then((m) => ({ default: m.Assessment })))
-const FeedbackOverlay  = lazy(() => import('@/features/education/components/FeedbackOverlay').then((m) => ({ default: m.FeedbackOverlay })))
-const LevelUpModal     = lazy(() => import('@/features/gamification/components/LevelUpModal').then((m) => ({ default: m.LevelUpModal })))
-const AchievementToast = lazy(() => import('@/features/gamification/components/AchievementToast').then((m) => ({ default: m.AchievementToast })))
-const AchievementsPanel = lazy(() => import('@/features/gamification/components/AchievementsPanel').then((m) => ({ default: m.AchievementsPanel })))
-const EventResponseCard = lazy(() => import('@/features/gamification/components/EventResponseCard').then((m) => ({ default: m.EventResponseCard })))
-const PurchaseMPPanel   = lazy(() => import('@/features/inventory/components/PurchaseMPPanel').then((m) => ({ default: m.PurchaseMPPanel })))
-const ProductionOrderPanel = lazy(() => import('@/features/production/components/ProductionOrderPanel').then((m) => ({ default: m.ProductionOrderPanel })))
-const SellPTPanel       = lazy(() => import('@/features/finance/components/SellPTPanel').then((m) => ({ default: m.SellPTPanel })))
+const ECPVFlow = lazy(() =>
+  import('@/features/cost-statement/components/ECPVFlow').then((m) => ({ default: m.ECPVFlow }))
+)
+const Assessment = lazy(() =>
+  import('@/features/education/components/Assessment').then((m) => ({ default: m.Assessment }))
+)
+const FeedbackOverlay = lazy(() =>
+  import('@/features/education/components/FeedbackOverlay').then((m) => ({
+    default: m.FeedbackOverlay,
+  }))
+)
+const LevelUpModal = lazy(() =>
+  import('@/features/gamification/components/LevelUpModal').then((m) => ({
+    default: m.LevelUpModal,
+  }))
+)
+const AchievementToast = lazy(() =>
+  import('@/features/gamification/components/AchievementToast').then((m) => ({
+    default: m.AchievementToast,
+  }))
+)
+const AchievementsPanel = lazy(() =>
+  import('@/features/gamification/components/AchievementsPanel').then((m) => ({
+    default: m.AchievementsPanel,
+  }))
+)
+const EventResponseCard = lazy(() =>
+  import('@/features/gamification/components/EventResponseCard').then((m) => ({
+    default: m.EventResponseCard,
+  }))
+)
+const PurchaseMPPanel = lazy(() =>
+  import('@/features/inventory/components/PurchaseMPPanel').then((m) => ({
+    default: m.PurchaseMPPanel,
+  }))
+)
+const ProductionOrderPanel = lazy(() =>
+  import('@/features/production/components/ProductionOrderPanel').then((m) => ({
+    default: m.ProductionOrderPanel,
+  }))
+)
+const SellPTPanel = lazy(() =>
+  import('@/features/finance/components/SellPTPanel').then((m) => ({ default: m.SellPTPanel }))
+)
+const LiveKPIPanel = lazy(() =>
+  import('@/features/finance/components/LiveKPIPanel').then((m) => ({ default: m.LiveKPIPanel }))
+)
+const LiquidityModal = lazy(() =>
+  import('@/features/gamification/components/LiquidityModal').then((m) => ({
+    default: m.LiquidityModal,
+  }))
+)
+const MarketOrderModal = lazy(() =>
+  import('@/features/gamification/components/MarketOrderModal').then((m) => ({
+    default: m.MarketOrderModal,
+  }))
+)
+const EventDecisionModal = lazy(() =>
+  import('@/features/gamification/components/EventDecisionModal').then((m) => ({
+    default: m.EventDecisionModal,
+  }))
+)
+const LevelCompleteModal = lazy(() =>
+  import('@/features/gamification/components/LevelCompleteModal').then((m) => ({
+    default: m.LevelCompleteModal,
+  }))
+)
+const OnboardingFlow = lazy(() =>
+  import('@/features/education/components/OnboardingFlow').then((m) => ({
+    default: m.OnboardingFlow,
+  }))
+)
 
 function PanelSpinner() {
   return (
@@ -27,17 +91,17 @@ function PanelSpinner() {
 
 const PANEL_TITLES: Record<string, string> = {
   'mp-warehouse': 'Almacén de MP',
-  'roasting':     'Tostión',
-  'grinding':     'Molido',
-  'packaging':    'Empaque',
+  roasting: 'Tostión',
+  grinding: 'Molido',
+  packaging: 'Empaque',
   'pt-warehouse': 'Almacén de PT',
-  'ecpv':         'Estado de Costos',
-  'finance':      'Finanzas',
+  ecpv: 'Estado de Costos',
+  finance: 'Finanzas',
 }
 
 function LockedPanel({ panelId }: { panelId: string }) {
   const requiredLevel = PANEL_UNLOCK_LEVEL[panelId] ?? 1
-  const description   = PANEL_UNLOCK_DESCRIPTION[panelId]
+  const description = PANEL_UNLOCK_DESCRIPTION[panelId]
   return (
     <div className="flex flex-col items-center gap-3 py-10 text-center">
       <span className="text-4xl select-none">⚿</span>
@@ -70,7 +134,10 @@ function PanelContent({ panelId }: { panelId: string }) {
         <Suspense fallback={<PanelSpinner />}>
           <ECPVFlow />
           {!showAssessment ? (
-            <button onClick={() => setShowAssessment(true)} className="btn-secondary text-xs w-full">
+            <button
+              onClick={() => setShowAssessment(true)}
+              className="btn-secondary text-xs w-full"
+            >
               Realizar evaluación del nivel
             </button>
           ) : (
@@ -82,22 +149,45 @@ function PanelContent({ panelId }: { panelId: string }) {
   }
 
   if (panelId === 'mp-warehouse') {
-    return <Suspense fallback={<PanelSpinner />}><PurchaseMPPanel /></Suspense>
+    return (
+      <Suspense fallback={<PanelSpinner />}>
+        <PurchaseMPPanel />
+      </Suspense>
+    )
   }
 
   if (panelId === 'roasting' || panelId === 'grinding' || panelId === 'packaging') {
-    return <Suspense fallback={<PanelSpinner />}><ProductionOrderPanel areaId={panelId} /></Suspense>
+    return (
+      <Suspense fallback={<PanelSpinner />}>
+        <ProductionOrderPanel areaId={panelId} />
+      </Suspense>
+    )
   }
 
   if (panelId === 'pt-warehouse') {
-    return <Suspense fallback={<PanelSpinner />}><SellPTPanel /></Suspense>
+    return (
+      <Suspense fallback={<PanelSpinner />}>
+        <SellPTPanel />
+        <div className="mt-4">
+          <LiveKPIPanel />
+        </div>
+      </Suspense>
+    )
   }
 
   if (panelId === 'finance') {
-    return <Suspense fallback={<PanelSpinner />}><EventResponseCard /></Suspense>
+    return (
+      <Suspense fallback={<PanelSpinner />}>
+        <EventResponseCard />
+      </Suspense>
+    )
   }
 
-  return <Suspense fallback={<PanelSpinner />}><AchievementsPanel /></Suspense>
+  return (
+    <Suspense fallback={<PanelSpinner />}>
+      <AchievementsPanel />
+    </Suspense>
+  )
 }
 
 // ── Panel sidebar — sibling of the canvas, not an overlay ───────────────────
@@ -130,12 +220,18 @@ function PanelSidebar() {
 
 export function GamePage() {
   const { user, setSessionId } = useAuthStore()
+  const { level } = useGamificationStore()
+  const { initCash } = useFinanceStore()
+  const { resetLevel } = useProgressStore()
+  const [showAssessmentModal, setShowAssessmentModal] = useState(false)
 
   useAnalyticsWatcher()
 
   useEffect(() => {
     if (!user) return
     sessionService.createSession(user.uid, 1).then(setSessionId).catch(console.error)
+    initCash(1)
+    resetLevel()
   }, [user, setSessionId])
 
   return (
@@ -146,7 +242,9 @@ export function GamePage() {
         <div className="relative flex-1 min-w-0 overflow-hidden">
           <GameCanvas />
           {/* FeedbackOverlay is positioned inside the canvas area, never behind the panel */}
-          <Suspense fallback={null}><FeedbackOverlay /></Suspense>
+          <Suspense fallback={null}>
+            <FeedbackOverlay />
+          </Suspense>
         </div>
 
         {/* Side panel — opens as a column, canvas shrinks to make room */}
@@ -154,8 +252,42 @@ export function GamePage() {
       </div>
 
       {/* ── Floating notifications — fixed/viewport, always above everything ── */}
-      <Suspense fallback={null}><LevelUpModal /></Suspense>
-      <Suspense fallback={null}><AchievementToast /></Suspense>
+      <Suspense fallback={null}>
+        <LevelUpModal />
+      </Suspense>
+      <Suspense fallback={null}>
+        <AchievementToast />
+      </Suspense>
+      <Suspense fallback={null}>
+        <OnboardingFlow />
+      </Suspense>
+      <Suspense fallback={null}>
+        <LiquidityModal />
+      </Suspense>
+      <Suspense fallback={null}>
+        <MarketOrderModal />
+      </Suspense>
+      <Suspense fallback={null}>
+        <EventDecisionModal />
+      </Suspense>
+      <Suspense fallback={null}>
+        <LevelCompleteModal
+          onAssessment={() => setShowAssessmentModal(true)}
+          onNextLevel={() => {
+            initCash(Math.min(8, level + 1) as typeof level)
+            resetLevel()
+          }}
+        />
+      </Suspense>
+      {showAssessmentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md bg-surface-primary rounded-lg border border-border-default p-5 overflow-y-auto max-h-[90vh]">
+            <Suspense fallback={<PanelSpinner />}>
+              <Assessment level={level} onClose={() => setShowAssessmentModal(false)} />
+            </Suspense>
+          </div>
+        </div>
+      )}
     </GameLayout>
   )
 }

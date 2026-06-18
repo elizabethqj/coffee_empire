@@ -18,10 +18,15 @@ interface CostRates {
  * MPD is the cost of materials consumed (read from inventory unit costs).
  * MOD and CIF are split evenly across all active orders.
  */
-export function accumulateCosts(rates: CostRates = { laborMultiplier: 1, cifWasteAddition: 0 }): void {
+export function accumulateCosts(
+  rates: CostRates = { laborMultiplier: 1, cifWasteAddition: 0 }
+): void {
   const { getActiveOrders, accumulateOrderCosts } = useProductionStore.getState()
-  const { accumulateMPD, accumulateMOD, accumulateCIF } = useFinanceStore.getState()
+  const { accumulateMPD, accumulateMOD, accumulateCIF, debitCash, isBankrupt } =
+    useFinanceStore.getState()
   const { items } = useInventoryStore.getState()
+
+  if (isBankrupt) return
 
   const activeOrders = getActiveOrders()
   if (activeOrders.length === 0) return
@@ -45,7 +50,12 @@ export function accumulateCosts(rates: CostRates = { laborMultiplier: 1, cifWast
       orderMPD += consumptionPerTick * unitCost
     }
 
-    accumulateOrderCosts(order.id, orderMPD, laborPerOrder, energyPerOrder + maintenancePerOrder + wastePerOrder)
+    accumulateOrderCosts(
+      order.id,
+      orderMPD,
+      laborPerOrder,
+      energyPerOrder + maintenancePerOrder + wastePerOrder
+    )
     totalMPD += orderMPD
   }
 
@@ -56,4 +66,7 @@ export function accumulateCosts(rates: CostRates = { laborMultiplier: 1, cifWast
   accumulateMPD(totalMPD)
   accumulateMOD(totalLabor)
   accumulateCIF(totalEnergy, totalMaintenance, rates.cifWasteAddition)
+
+  // Debit MOD + CIF from cash balance (production costs consume cash)
+  debitCash(totalLabor + totalEnergy + totalMaintenance + rates.cifWasteAddition)
 }

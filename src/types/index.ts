@@ -67,6 +67,7 @@ export interface FinancialState {
 export interface CostStatement {
   initialMP: number
   purchases: number
+  availableMP: number
   finalMP: number
   materialUsed: number
 
@@ -81,6 +82,7 @@ export interface CostStatement {
   finishedGoodsCost: number
 
   initialPT: number
+  availableForSale: number
   finalPT: number
 
   salesCost: number
@@ -99,6 +101,24 @@ export type DynamicEventType =
   | 'machine_failure'
   | 'waste_spike'
 
+export interface EventResponseEffect {
+  laborMultiplier?: number
+  cifWasteAddition?: number
+  priceMultiplier?: number
+  speedMultiplier?: number
+  cashDebitOnce?: number
+  reduceDurationTo?: number
+}
+
+export interface EventResponse {
+  id: 'A' | 'B' | 'C'
+  label: string
+  description: string
+  costLabel: string
+  pedagogicalHint: string
+  effect: EventResponseEffect
+}
+
 export interface DynamicEvent {
   id: string
   type: DynamicEventType
@@ -107,12 +127,16 @@ export interface DynamicEvent {
   description: string
   effectDurationTicks: number
   appliedAtTick: number
+  responses: EventResponse[]
+  chosenResponseId: 'A' | 'B' | 'C' | null
+  pedagogicalNote: string
 }
 
 export interface Achievement {
   id: string
   title: string
   description: string
+  secret?: boolean
   unlockedAtTick: number | null
 }
 
@@ -121,6 +145,38 @@ export interface PlayerState {
   level: GameLevel
   achievements: Achievement[]
   activeEvents: DynamicEvent[]
+}
+
+// ─── Market Orders ────────────────────────────────────────────────────────────
+
+export interface MarketOrder {
+  id: string
+  clientName: string
+  quantity: number
+  offerPricePerUnit: number
+  deadlineTick: number
+  issuedAtTick: number
+  status: 'pending' | 'accepted' | 'fulfilled' | 'failed' | 'rejected'
+  bonusMultiplier: number
+}
+
+// ─── Progress / Level Objectives ─────────────────────────────────────────────
+
+export type LevelStars = 0 | 1 | 2 | 3
+
+export interface LevelObjective {
+  level: GameLevel
+  description: string
+  detail: string
+  maxTicks: number
+  starThresholds: { two: number; three: number }
+}
+
+export interface ConceptMastery {
+  concept: string
+  label: string
+  status: 'ok' | 'pending' | 'missing'
+  note: string
 }
 
 // ─── Analytics ───────────────────────────────────────────────────────────────

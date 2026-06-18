@@ -20,6 +20,20 @@ class GameBridge {
     this.scene = null
   }
 
+  /** Animate a cash flow particle on the canvas (call from React after debit/credit). */
+  flashCashFlow(type: 'debit' | 'credit', amount: number, areaId: string): void {
+    this.scene?.flashCashFlow(type, amount, areaId)
+  }
+
+  /** Pulse-highlight an area for onboarding. */
+  highlightArea(areaId: string, durationMs = 2000): void {
+    this.scene?.highlightArea(areaId, durationMs)
+  }
+
+  clearHighlight(): void {
+    this.scene?.clearHighlight()
+  }
+
   private bindStores(): void {
     this.unsubscribers.push(
       useInventoryStore.subscribe((state) => {

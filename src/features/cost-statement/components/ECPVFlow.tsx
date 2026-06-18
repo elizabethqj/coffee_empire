@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { animate } from 'framer-motion'
 import { useCostStatementStore } from '@/store/costStatementStore'
 import { FormulaTooltip } from './FormulaTooltip'
@@ -38,24 +38,79 @@ function useAnimatedNumber(value: number) {
   return ref
 }
 
-interface FlowNodeProps {
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function SectionHeader({ label, first = false }: { label: string; first?: boolean }) {
+  return (
+    <p
+      className={`text-[10px] font-mono uppercase tracking-widest text-text-muted px-2 pt-2 pb-0.5 ${
+        first ? '' : 'border-t border-border-default'
+      }`}
+    >
+      {label}
+    </p>
+  )
+}
+
+interface RowProps {
+  operator?: string
+  label: string
+  value: number
+  badge?: string
+  formula?: string
+  explanation?: string
+}
+
+function ECPVRow({ operator, label, value, badge, formula, explanation }: RowProps) {
+  const ref = useAnimatedNumber(value)
+
+  const inner = (
+    <div className="flex items-center justify-between py-1 px-2 text-xs font-mono text-text-muted">
+      <div className="flex items-center gap-1.5 min-w-0">
+        <span className="w-4 shrink-0 text-text-muted/50">{operator ?? ''}</span>
+        <span className="truncate">{label}</span>
+        {badge && (
+          <span className="text-[9px] px-1 rounded bg-surface-primary border border-border-default text-text-muted/70 shrink-0 leading-4">
+            {badge}
+          </span>
+        )}
+      </div>
+      <span className="tabular-nums shrink-0 ml-2 text-text-primary">
+        <span ref={ref}>{formatCOP(value)}</span>
+      </span>
+    </div>
+  )
+
+  if (formula && explanation) {
+    return (
+      <FormulaTooltip formula={formula} explanation={explanation}>
+        {inner}
+      </FormulaTooltip>
+    )
+  }
+  return inner
+}
+
+interface SubtotalProps {
+  operator?: string
   label: string
   value: number
   formula: string
   explanation: string
   highlight?: 'ok' | 'warn' | 'error' | 'neutral'
-  isLast?: boolean
+  large?: boolean
 }
 
-function FlowNode({ label, value, formula, explanation, highlight = 'neutral', isLast }: FlowNodeProps) {
-  const valueRef = useAnimatedNumber(value)
-
-  const borderColor = {
-    ok: 'border-status-ok',
-    warn: 'border-status-warn',
-    error: 'border-status-error',
-    neutral: 'border-border-default',
-  }[highlight]
+function ECPVSubtotal({
+  operator = '=',
+  label,
+  value,
+  formula,
+  explanation,
+  highlight = 'neutral',
+  large = false,
+}: SubtotalProps) {
+  const ref = useAnimatedNumber(value)
 
   const textColor = {
     ok: 'text-status-ok',
@@ -64,32 +119,36 @@ function FlowNode({ label, value, formula, explanation, highlight = 'neutral', i
     neutral: 'text-text-primary',
   }[highlight]
 
-  return (
-    <div className="flex flex-col items-center">
-      <FormulaTooltip formula={formula} explanation={explanation}>
-        <div
-          className={`w-full rounded border ${borderColor} bg-surface-primary px-3 py-2 transition-colors duration-300`}
-        >
-          <p className="text-xs text-text-muted mb-0.5 font-mono uppercase tracking-wider">{label}</p>
-          <p className={`text-sm font-bold font-mono tabular-nums ${textColor}`}>
-            <span ref={valueRef}>{formatCOP(value)}</span>
-          </p>
-        </div>
-      </FormulaTooltip>
-
-      {!isLast && (
-        <div className="h-5 w-px bg-border-default relative">
-          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-border-default" />
-        </div>
-      )}
+  const inner = (
+    <div
+      className={`flex items-center justify-between border-t border-border-default px-2 py-1.5 font-mono font-bold ${
+        large ? 'text-sm' : 'text-xs'
+      } ${textColor}`}
+    >
+      <div className="flex items-center gap-1.5 min-w-0">
+        <span className="w-4 shrink-0 font-normal text-text-muted/50">{operator}</span>
+        <span className="truncate">{label}</span>
+      </div>
+      <span className="tabular-nums shrink-0 ml-2">
+        <span ref={ref}>{formatCOP(value)}</span>
+      </span>
     </div>
   )
+
+  return (
+    <FormulaTooltip formula={formula} explanation={explanation}>
+      {inner as ReactNode}
+    </FormulaTooltip>
+  )
 }
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export function ECPVFlow() {
   const s = useCostStatementStore((state) => state.statement)
 
   const profitHighlight = s.profit > 0 ? 'ok' : s.profit === 0 ? 'warn' : 'error'
+  const salesHighlight = s.salesCost > s.revenue ? 'error' : 'neutral'
 
   return (
     <div className="flex flex-col gap-0">
@@ -97,92 +156,91 @@ export function ECPVFlow() {
         Estado de Costos (ECPV)
       </h3>
 
-      {/* MP Section */}
-      <div className="rounded border border-border-default bg-surface-card p-2 mb-2 space-y-1.5">
-        <p className="text-xs text-text-muted font-mono uppercase">Materia Prima</p>
-        <div className="grid grid-cols-3 gap-1 text-xs font-mono">
-          <div>
-            <span className="text-text-muted">Inicial</span>
-            <p className="text-text-primary">{formatCOP(s.initialMP)}</p>
-          </div>
-          <div>
-            <span className="text-text-muted">+ Compras</span>
-            <p className="text-text-primary">{formatCOP(s.purchases)}</p>
-          </div>
-          <div>
-            <span className="text-text-muted">− Final</span>
-            <p className="text-text-primary">{formatCOP(s.finalMP)}</p>
-          </div>
-        </div>
-        <FlowNode
-          label="Material Utilizado"
-          value={s.materialUsed}
-          formula="Inicial + Compras − Final MP"
-          explanation="Costo de materia prima efectivamente consumida en el período de producción."
-          highlight="neutral"
+      <div className="rounded border border-border-default bg-surface-card overflow-hidden">
+        {/* ── Materia Prima Directa ──────────────────────────── */}
+        <SectionHeader label="Materia Prima Directa" first />
+        <ECPVRow label="Inv. Inicial MPD" value={s.initialMP} />
+        <ECPVRow operator="+" label="Compras netas" value={s.purchases} />
+        <ECPVSubtotal
+          label="Disponible de MPD"
+          value={s.availableMP}
+          formula="Inv. Inicial + Compras"
+          explanation="Total de materia prima que estuvo disponible durante el período (antes de consumir)."
         />
-      </div>
+        <ECPVRow operator="−" label="Inv. Final MPD" value={s.finalMP} />
+        <ECPVSubtotal
+          label="Costo de MPD"
+          value={s.materialUsed}
+          formula="Disponible de MPD − Inv. Final MPD"
+          explanation="Costo de la materia prima directa efectivamente consumida en la producción del período."
+        />
 
-      <div className="h-4 flex items-center justify-center text-text-muted text-xs">↓ + MOD + CIF</div>
-
-      {/* Cost of Production */}
-      <div className="rounded border border-border-default bg-surface-card p-2 mb-2 space-y-1.5">
-        <div className="grid grid-cols-2 gap-1 text-xs font-mono">
-          <div>
-            <span className="text-text-muted">MOD</span>
-            <p className="text-text-primary">{formatCOP(s.mod)}</p>
-          </div>
-          <div>
-            <span className="text-text-muted">CIF</span>
-            <p className="text-text-primary">{formatCOP(s.cif)}</p>
-          </div>
-        </div>
-        <FlowNode
+        {/* ── Costos de Conversión ──────────────────────────── */}
+        <SectionHeader label="Costos de Conversión" />
+        <ECPVRow
+          operator="+"
+          label="MOD"
+          value={s.mod}
+          badge="Costos primos"
+          formula="Mano de Obra Directa"
+          explanation="Costo de la mano de obra directamente aplicada al proceso. Junto con el MPD forma los 'Costos primos'."
+        />
+        <ECPVRow
+          operator="+"
+          label="CIF"
+          value={s.cif}
+          formula="Costos Indirectos de Fabricación"
+          explanation="Energía + mantenimiento + desperdicios. Costos indirectos del proceso productivo."
+        />
+        <ECPVSubtotal
           label="Costo de Producción"
           value={s.productionCost}
-          formula="MPU + MOD + CIF"
-          explanation="Suma de todos los costos incurridos durante el proceso productivo."
-          highlight="neutral"
+          formula="MPD + MOD + CIF"
+          explanation="Suma total de los tres elementos del costo: materia prima, mano de obra y costos indirectos del período."
+          large
         />
-      </div>
 
-      <div className="h-4 flex items-center justify-center text-text-muted text-xs">↓ ± WIP</div>
+        {/* ── Producción en Proceso ────────────────────────── */}
+        <SectionHeader label="Producción en Proceso (WIP)" />
+        <ECPVRow operator="+" label="Inv. Inicial PP" value={s.initialWIP} />
+        <ECPVRow operator="−" label="Inv. Final PP" value={s.finalWIP} />
+        <ECPVSubtotal
+          label="Costo Prod. Terminada"
+          value={s.finishedGoodsCost}
+          formula="PP Inicial + Costo de Prod. − PP Final"
+          explanation="Costo de los productos que completaron todo el proceso productivo. Ajusta el costo por el WIP que quedó en proceso."
+        />
 
-      {/* WIP / Finished Goods */}
-      <FlowNode
-        label="Costo Prod. Terminada"
-        value={s.finishedGoodsCost}
-        formula="WIP Inicial + CP − WIP Final"
-        explanation="Costo de los bienes completamente terminados durante el período."
-      />
+        {/* ── Producto Terminado ───────────────────────────── */}
+        <SectionHeader label="Producto Terminado" />
+        <ECPVRow operator="+" label="Inv. Inicial PT" value={s.initialPT} />
+        <ECPVSubtotal
+          label="Disponible para la venta"
+          value={s.availableForSale}
+          formula="Costo Prod. Terminada + Inv. Inicial PT"
+          explanation="Total de productos terminados disponibles para vender en el período: los producidos más los que venían del período anterior."
+        />
+        <ECPVRow operator="−" label="Inv. Final PT" value={s.finalPT} />
+        <ECPVSubtotal
+          label="Costo de Ventas"
+          value={s.salesCost}
+          formula="Disponible para la venta − Inv. Final PT"
+          explanation="Costo de los productos efectivamente vendidos en el período."
+          highlight={salesHighlight}
+          large
+        />
 
-      <div className="h-4 flex items-center justify-center text-text-muted text-xs">↓ ± PT</div>
-
-      {/* Sales Cost */}
-      <FlowNode
-        label="Costo de Ventas"
-        value={s.salesCost}
-        formula="PT Inicial + CPT − PT Final"
-        explanation="Costo de los productos efectivamente vendidos en el período."
-        highlight={s.salesCost > s.revenue ? 'error' : 'neutral'}
-      />
-
-      <div className="h-4 flex items-center justify-center text-text-muted text-xs">↓ vs Ingresos</div>
-
-      {/* Profit */}
-      <FlowNode
-        label="Utilidad / Pérdida"
-        value={s.profit}
-        formula="Ingresos − Costo de Ventas"
-        explanation="Resultado neto del período. Positivo = utilidad, negativo = pérdida."
-        highlight={profitHighlight}
-        isLast
-      />
-
-      {/* Revenue context */}
-      <div className="mt-2 flex justify-between text-xs font-mono border-t border-border-default pt-2">
-        <span className="text-text-muted">Ingresos del período</span>
-        <span className="text-text-primary">{formatCOP(s.revenue)}</span>
+        {/* ── Resultado del Período ────────────────────────── */}
+        <SectionHeader label="Resultado del Período" />
+        <ECPVRow label="Ingresos" value={s.revenue} />
+        <ECPVSubtotal
+          label="Utilidad / Pérdida"
+          value={s.profit}
+          formula="Ingresos − Costo de Ventas"
+          explanation="Resultado neto del período. Positivo = utilidad, negativo = pérdida operacional."
+          highlight={profitHighlight}
+          large
+        />
       </div>
 
       {/* Trend chart */}

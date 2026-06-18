@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import type { FinancialState } from '@/types'
+import type { FinancialState, GameLevel } from '@/types'
+import { INITIAL_CASH_BY_LEVEL, CASH_CRITICAL_PCT } from '@/constants/gameBalance'
 
 const INITIAL_STATE: FinancialState = {
   rawMaterialCost: 0,
@@ -14,15 +15,31 @@ const INITIAL_STATE: FinancialState = {
 
 interface FinanceStore {
   state: FinancialState
+  cashBalance: number
+  initialCash: number
+  isBankrupt: boolean
+  reputationPenaltyUntilTick: number
+
   accumulateMPD: (amount: number) => void
   accumulateMOD: (amount: number) => void
   accumulateCIF: (energy: number, maintenance: number, waste: number) => void
   recordSale: (quantity: number, unitPrice: number, unitCost: number) => void
   resetPeriod: () => void
+
+  initCash: (level: GameLevel) => void
+  debitCash: (amount: number) => void
+  creditCash: (amount: number) => void
+  isCashCritical: () => boolean
+  setReputationPenalty: (untilTick: number) => void
+  clearBankruptcy: () => void
 }
 
-export const useFinanceStore = create<FinanceStore>((set) => ({
+export const useFinanceStore = create<FinanceStore>((set, get) => ({
   state: { ...INITIAL_STATE, cifBreakdown: { ...INITIAL_STATE.cifBreakdown } },
+  cashBalance: INITIAL_CASH_BY_LEVEL[1],
+  initialCash: INITIAL_CASH_BY_LEVEL[1],
+  isBankrupt: false,
+  reputationPenaltyUntilTick: 0,
 
   accumulateMPD: (amount) =>
     set((s) => {
@@ -53,9 +70,12 @@ export const useFinanceStore = create<FinanceStore>((set) => ({
 
   recordSale: (quantity, unitPrice, unitCost) =>
     set((s) => {
+      const { reputationPenaltyUntilTick } = s
+      // Honour reputation penalty if active (checked externally by passing current tick)
       const revenue = s.state.revenue + quantity * unitPrice
       const salesCost = s.state.salesCost + quantity * unitCost
       const profit = revenue - salesCost
+      void reputationPenaltyUntilTick // used externally; stored for UI
       return { state: { ...s.state, revenue, salesCost, profit } }
     }),
 
@@ -66,4 +86,29 @@ export const useFinanceStore = create<FinanceStore>((set) => ({
         cifBreakdown: { ...INITIAL_STATE.cifBreakdown },
       },
     }),
+
+  initCash: (level) =>
+    set({
+      cashBalance: INITIAL_CASH_BY_LEVEL[level],
+      initialCash: INITIAL_CASH_BY_LEVEL[level],
+      isBankrupt: false,
+    }),
+
+  debitCash: (amount) =>
+    set((s) => {
+      const cashBalance = Math.max(0, s.cashBalance - amount)
+      const isBankrupt = cashBalance <= 0
+      return { cashBalance, isBankrupt }
+    }),
+
+  creditCash: (amount) => set((s) => ({ cashBalance: s.cashBalance + amount, isBankrupt: false })),
+
+  isCashCritical: () => {
+    const { cashBalance, initialCash } = get()
+    return cashBalance <= initialCash * CASH_CRITICAL_PCT
+  },
+
+  setReputationPenalty: (untilTick) => set({ reputationPenaltyUntilTick: untilTick }),
+
+  clearBankruptcy: () => set({ isBankrupt: false }),
 }))

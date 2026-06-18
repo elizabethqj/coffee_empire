@@ -5,6 +5,7 @@ import type { CostStatement } from '@/types'
 const base: CostStatement = {
   initialMP: 10_000,
   purchases: 50_000,
+  availableMP: 60_000,
   finalMP: 15_000,
   materialUsed: 45_000,
   mod: 20_000,
@@ -14,6 +15,7 @@ const base: CostStatement = {
   finalWIP: 3_000,
   finishedGoodsCost: 75_000,
   initialPT: 12_000,
+  availableForSale: 87_000,
   finalPT: 8_000,
   salesCost: 79_000,
   revenue: 100_000,
@@ -60,5 +62,21 @@ describe('analyzeCostStatement', () => {
     const msgs = analyzeCostStatement(base, null)
     expect(msgs.every((m) => m.id !== 'loss')).toBe(true)
     expect(msgs.every((m) => m.id !== 'high-cif')).toBe(true)
+  })
+
+  it('returns supplier crisis feedback when supplier_crisis active and MPD increased', () => {
+    const prev: CostStatement = { ...base, materialUsed: 30_000 }
+    const curr: CostStatement = { ...base, materialUsed: 45_000 }
+    const msgs = analyzeCostStatement(curr, prev, [
+      { type: 'supplier_crisis', chosenResponseId: 'B' },
+    ])
+    expect(msgs.some((m) => m.id === 'event-supplier-absorbed')).toBe(true)
+  })
+
+  it('returns waste CIF feedback when waste_spike active and CIF increased', () => {
+    const prev: CostStatement = { ...base, cif: 5_000, productionCost: 70_000 }
+    const curr: CostStatement = { ...base, cif: 35_000, productionCost: 100_000 }
+    const msgs = analyzeCostStatement(curr, prev, [{ type: 'waste_spike', chosenResponseId: 'B' }])
+    expect(msgs.some((m) => m.id === 'event-waste-cif')).toBe(true)
   })
 })

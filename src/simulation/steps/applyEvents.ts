@@ -23,8 +23,9 @@ const BASE_RATES: TickRates = {
 }
 
 /**
- * Compute effective tick rates by folding active dynamic events onto the base rates.
- * Pure function — no store reads, safe to unit-test in isolation.
+ * Compute effective tick rates by folding active dynamic events.
+ * When a player has chosen a response, the response's effect overrides
+ * the default event effect. Pure function — no store reads.
  */
 export function applyEvents(activeEvents: DynamicEvent[], currentTick: number): TickRates {
   const rates = { ...BASE_RATES }
@@ -33,19 +34,33 @@ export function applyEvents(activeEvents: DynamicEvent[], currentTick: number): 
     const expired = currentTick >= event.appliedAtTick + event.effectDurationTicks
     if (expired) continue
 
-    switch (event.type) {
-      case 'supplier_crisis':
-        rates.mpCostMultiplier *= MP_COST_CRISIS_MULTIPLIER
-        break
-      case 'demand_surge':
-        rates.salePriceMultiplier *= DEMAND_SURGE_PRICE_MULTIPLIER
-        break
-      case 'machine_failure':
-        rates.speedMultiplier *= MACHINE_FAILURE_SPEED_MULTIPLIER
-        break
-      case 'waste_spike':
-        rates.cifWasteAddition += WASTE_SPIKE_CIF_ADDITION
-        break
+    const chosen = event.chosenResponseId
+      ? event.responses.find((r) => r.id === event.chosenResponseId)
+      : null
+
+    if (chosen) {
+      // Apply the chosen response's effect overrides
+      const e = chosen.effect
+      if (e.laborMultiplier !== undefined) rates.laborMultiplier *= e.laborMultiplier
+      if (e.cifWasteAddition !== undefined) rates.cifWasteAddition += e.cifWasteAddition
+      if (e.priceMultiplier !== undefined) rates.salePriceMultiplier *= e.priceMultiplier
+      if (e.speedMultiplier !== undefined) rates.speedMultiplier *= e.speedMultiplier
+    } else {
+      // No response chosen yet → apply default event effect
+      switch (event.type) {
+        case 'supplier_crisis':
+          rates.mpCostMultiplier *= MP_COST_CRISIS_MULTIPLIER
+          break
+        case 'demand_surge':
+          rates.salePriceMultiplier *= DEMAND_SURGE_PRICE_MULTIPLIER
+          break
+        case 'machine_failure':
+          rates.speedMultiplier *= MACHINE_FAILURE_SPEED_MULTIPLIER
+          break
+        case 'waste_spike':
+          rates.cifWasteAddition += WASTE_SPIKE_CIF_ADDITION
+          break
+      }
     }
   }
 

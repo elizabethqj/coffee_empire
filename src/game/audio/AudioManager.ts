@@ -7,12 +7,33 @@ export type SoundKey =
   | 'event_trigger'
   | 'level_up'
   | 'achievement'
+  | 'factory_ambient'
+  | 'market_order'
+  | 'order_fulfilled'
+  | 'order_failed'
+  | 'cash_critical'
 
 const STORAGE_KEY = 'costflow_audio_enabled'
+
+const SOUND_PATHS: Record<SoundKey, string> = {
+  purchase: 'sounds/purchase.mp3',
+  order_complete: 'sounds/order_complete.mp3',
+  sale: 'sounds/sale.mp3',
+  event_trigger: 'sounds/event_trigger.mp3',
+  level_up: 'sounds/level_up.mp3',
+  achievement: 'sounds/achievement.mp3',
+  factory_ambient: 'sounds/factory_ambient.mp3',
+  market_order: 'sounds/market_order.mp3',
+  order_fulfilled: 'sounds/order_fulfilled.mp3',
+  order_failed: 'sounds/order_failed.mp3',
+  cash_critical: 'sounds/cash_critical.mp3',
+}
 
 class AudioManagerSingleton {
   private scene: Phaser.Scene | null = null
   private enabled: boolean
+  private ambientSound: Phaser.Sound.BaseSound | null = null
+  private ambientPlaying = false
 
   constructor() {
     this.enabled = localStorage.getItem(STORAGE_KEY) !== 'false'
@@ -23,6 +44,7 @@ class AudioManagerSingleton {
   }
 
   unbind() {
+    this.stopAmbient()
     this.scene = null
   }
 
@@ -33,7 +55,11 @@ class AudioManagerSingleton {
   toggle() {
     this.enabled = !this.enabled
     localStorage.setItem(STORAGE_KEY, String(this.enabled))
-    if (!this.enabled) this.scene?.sound.stopAll()
+    if (!this.enabled) {
+      this.scene?.sound.stopAll()
+      this.ambientPlaying = false
+      this.ambientSound = null
+    }
     return this.enabled
   }
 
@@ -46,16 +72,51 @@ class AudioManagerSingleton {
     }
   }
 
-  preload(scene: Phaser.Scene) {
-    const sounds: Record<SoundKey, string> = {
-      purchase: 'sounds/purchase.mp3',
-      order_complete: 'sounds/order_complete.mp3',
-      sale: 'sounds/sale.mp3',
-      event_trigger: 'sounds/event_trigger.mp3',
-      level_up: 'sounds/level_up.mp3',
-      achievement: 'sounds/achievement.mp3',
+  startAmbient() {
+    if (!this.enabled || !this.scene || this.ambientPlaying) return
+    try {
+      if (!this.ambientSound) {
+        this.ambientSound = this.scene.sound.add('factory_ambient', {
+          loop: true,
+          volume: 0.18,
+        })
+      }
+      this.ambientSound.play()
+      this.ambientPlaying = true
+    } catch {
+      // Asset optional
     }
-    for (const [key, path] of Object.entries(sounds)) {
+  }
+
+  stopAmbient() {
+    if (this.ambientPlaying && this.ambientSound) {
+      try {
+        this.ambientSound.stop()
+      } catch {
+        /* no-op */
+      }
+      this.ambientPlaying = false
+    }
+  }
+
+  playMarketOrder() {
+    this.play('market_order')
+  }
+
+  playOrderFulfilled() {
+    this.play('order_fulfilled')
+  }
+
+  playOrderFailed() {
+    this.play('order_failed')
+  }
+
+  playCashCritical() {
+    this.play('cash_critical')
+  }
+
+  preload(scene: Phaser.Scene) {
+    for (const [key, path] of Object.entries(SOUND_PATHS) as [SoundKey, string][]) {
       if (!scene.cache.audio.exists(key)) {
         scene.load.audio(key, path)
       }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useCostStatementStore } from '@/store/costStatementStore'
+import { useGamificationStore } from '@/store/gamificationStore'
 import { analyzeCostStatement, type FeedbackMessage } from '../feedbackEngine'
 
 const SEVERITY_STYLES = {
@@ -36,40 +37,60 @@ function FeedbackCard({ msg, onDismiss }: { msg: FeedbackMessage; onDismiss: () 
   )
 }
 
+const MIN_TICKS_BETWEEN_MESSAGES = 30
+
 export function FeedbackOverlay() {
   const history = useCostStatementStore((s) => s.history)
+  const activeEvents = useGamificationStore((s) => s.activeEvents)
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
   const prevRef = useRef<(typeof history)[0] | null>(null)
-  const [messages, setMessages] = useState<FeedbackMessage[]>([])
+  const lastMessageTickRef = useRef(0)
+  const [currentMsg, setCurrentMsg] = useState<FeedbackMessage | null>(null)
 
   useEffect(() => {
     if (history.length === 0) return
 
     const latest = history[history.length - 1]
     const prev = prevRef.current?.statement ?? null
+    if (latest === prevRef.current) return
 
-    if (latest !== prevRef.current) {
-      prevRef.current = latest
-      const msgs = analyzeCostStatement(latest.statement, prev)
-      setMessages(msgs)
-      setDismissed(new Set())
+    prevRef.current = latest
+
+    // Throttle: don't show a new message if one was shown recently
+    const ticksSinceLast = latest.tick - lastMessageTickRef.current
+    if (currentMsg && ticksSinceLast < MIN_TICKS_BETWEEN_MESSAGES) return
+
+    const eventInfo = activeEvents.map((e) => ({
+      type: e.type,
+      chosenResponseId: e.chosenResponseId,
+    }))
+    const msgs = analyzeCostStatement(latest.statement, prev, eventInfo).filter(
+      (m) => !dismissed.has(m.id)
+    )
+
+    // Show only the highest-priority message (critical > warning > info)
+    const priority = ['critical', 'warning', 'info'] as const
+    const topMsg = priority.flatMap((sev) => msgs.filter((m) => m.severity === sev))[0] ?? null
+
+    if (topMsg && topMsg.id !== currentMsg?.id) {
+      setCurrentMsg(topMsg)
+      lastMessageTickRef.current = latest.tick
     }
-  }, [history])
+  }, [history, activeEvents])
 
-  const visible = messages.filter((m) => !dismissed.has(m.id))
-
-  if (visible.length === 0) return null
+  if (!currentMsg || dismissed.has(currentMsg.id)) return null
 
   return (
-    <div className="absolute bottom-4 right-4 flex flex-col gap-2 z-20">
-      <AnimatePresence>
-        {visible.map((msg) => (
-          <FeedbackCard
-            key={msg.id}
-            msg={msg}
-            onDismiss={() => setDismissed((prev) => new Set([...prev, msg.id]))}
-          />
-        ))}
+    <div className="absolute bottom-4 right-4 z-20">
+      <AnimatePresence mode="wait">
+        <FeedbackCard
+          key={currentMsg.id}
+          msg={currentMsg}
+          onDismiss={() => {
+            setDismissed((prev) => new Set([...prev, currentMsg.id]))
+            setCurrentMsg(null)
+          }}
+        />
       </AnimatePresence>
     </div>
   )

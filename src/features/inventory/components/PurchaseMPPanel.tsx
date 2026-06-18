@@ -35,10 +35,18 @@ export function PurchaseMPPanel() {
 
   function handleBuy() {
     if (qty <= 0 || qty > space) {
-      setFeedback(qty <= 0 ? 'Cantidad debe ser mayor a 0.' : `Capacidad disponible: ${space.toFixed(1)} unidades.`)
+      setFeedback(
+        qty <= 0
+          ? 'Cantidad debe ser mayor a 0.'
+          : `Capacidad disponible: ${space.toFixed(1)} unidades.`
+      )
       return
     }
-    purchaseMP(selectedId, qty, unitCost)
+    const result = purchaseMP(selectedId, qty, unitCost)
+    if (result.error) {
+      setFeedback(result.error)
+      return
+    }
     setFeedback(`✓ Compra registrada: ${qty} u. por ${fmt(total)}`)
   }
 
@@ -68,7 +76,9 @@ export function PurchaseMPPanel() {
                     </span>
                   </td>
                   <td className="px-3 py-2 text-right text-text-muted">{def.maxCapacity}</td>
-                  <td className="px-3 py-2 text-right text-text-muted">{fmt(item?.unitCost ?? def.unitCost)}</td>
+                  <td className="px-3 py-2 text-right text-text-muted">
+                    {fmt(item?.unitCost ?? def.unitCost)}
+                  </td>
                 </tr>
               )
             })}
@@ -88,7 +98,9 @@ export function PurchaseMPPanel() {
             className="rounded border border-border-default bg-surface-secondary px-2 py-1.5 text-xs text-text-primary focus:border-accent-primary focus:outline-none"
           >
             {MP_ITEMS.map((i) => (
-              <option key={i.id} value={i.id}>{i.name}</option>
+              <option key={i.id} value={i.id}>
+                {i.name}
+              </option>
             ))}
           </select>
         </div>
@@ -123,7 +135,9 @@ export function PurchaseMPPanel() {
         </div>
 
         {feedback && (
-          <p className={`text-xs rounded px-2 py-1 ${feedback.startsWith('✓') ? 'text-status-success bg-status-success/10' : 'text-status-error bg-status-error/10'}`}>
+          <p
+            className={`text-xs rounded px-2 py-1 ${feedback.startsWith('✓') ? 'text-status-success bg-status-success/10' : 'text-status-error bg-status-error/10'}`}
+          >
             {feedback}
           </p>
         )}

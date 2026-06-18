@@ -16,6 +16,9 @@ const makeEvent = (type: DynamicEvent['type'], appliedAtTick = 0, duration = 30)
   description: '',
   effectDurationTicks: duration,
   appliedAtTick,
+  responses: [],
+  chosenResponseId: null,
+  pedagogicalNote: '',
 })
 
 describe('applyEvents', () => {
