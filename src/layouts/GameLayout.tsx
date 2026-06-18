@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useSimulationStore, useGamificationStore, useAuthStore, useUiStore } from '@/store'
 import { useFinanceStore } from '@/store/financeStore'
 import { useMarketStore } from '@/store/marketStore'
+import { useTutorialStore } from '@/store/tutorialStore'
 import { logoutUser } from '@/firebase/auth'
 import { simulationEngine } from '@/simulation/engine'
 import { AudioToggle } from '@/features/gamification/components/AudioToggle'
@@ -23,6 +24,7 @@ export function GameLayout({ children }: GameLayoutProps) {
   const { setActivePanel } = useUiStore()
   const { cashBalance, initialCash } = useFinanceStore()
   const { acceptedOrders } = useMarketStore()
+  const { restartTutorial } = useTutorialStore()
 
   const isCashCritical = initialCash > 0 && cashBalance <= initialCash * CASH_CRITICAL_PCT
   const activeAccepted = acceptedOrders.filter((o) => o.status === 'accepted')
@@ -46,6 +48,7 @@ export function GameLayout({ children }: GameLayoutProps) {
           <button
             onClick={() => setActivePanel('ecpv')}
             className="rounded px-2 py-1 text-xs font-mono text-accent-secondary border border-accent-secondary hover:bg-accent-secondary/10 transition-colors"
+            data-tutorial-target="ecpv-btn"
           >
             ECPV
           </button>
@@ -129,6 +132,16 @@ export function GameLayout({ children }: GameLayoutProps) {
           </span>
           <ThemeToggle />
           <AudioToggle />
+          <button
+            onClick={() => {
+              simulationEngine.pause()
+              restartTutorial()
+            }}
+            title="Ver tutorial desde el principio"
+            className="text-xs text-text-muted hover:text-accent-primary transition-colors whitespace-nowrap"
+          >
+            Tutorial
+          </button>
           <button
             onClick={logoutUser}
             className="text-xs text-text-muted hover:text-status-error transition-colors whitespace-nowrap"

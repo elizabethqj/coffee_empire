@@ -28,8 +28,14 @@ export function SellPTPanel() {
   const totalProfit = qty * margin
 
   function handleSell() {
-    if (qty <= 0) { setFeedback('Cantidad debe ser mayor a 0.'); return }
-    if (qty > available) { setFeedback(`Stock insuficiente. Disponible: ${available.toFixed(1)}`); return }
+    if (qty <= 0) {
+      setFeedback('Cantidad debe ser mayor a 0.')
+      return
+    }
+    if (qty > available) {
+      setFeedback(`Stock insuficiente. Disponible: ${available.toFixed(1)}`)
+      return
+    }
     sellPT(selectedId, qty, unitPrice)
     setFeedback(`✓ Venta registrada: ${qty} u. por ${fmt(totalRevenue)}`)
   }
@@ -53,7 +59,11 @@ export function SellPTPanel() {
                 <tr key={def.id} className="bg-surface-secondary">
                   <td className="px-3 py-2 text-text-primary">{def.name}</td>
                   <td className="px-3 py-2 text-right">
-                    <span className={!item || item.quantity === 0 ? 'text-text-muted' : 'text-text-primary'}>
+                    <span
+                      className={
+                        !item || item.quantity === 0 ? 'text-text-muted' : 'text-text-primary'
+                      }
+                    >
                       {item?.quantity.toFixed(1) ?? 0}
                     </span>
                   </td>
@@ -73,9 +83,14 @@ export function SellPTPanel() {
           { label: 'Ingresos', value: financeState.revenue },
           { label: 'Utilidad', value: financeState.profit },
         ].map(({ label, value }) => (
-          <div key={label} className="rounded-md border border-border-default bg-surface-secondary p-2 text-center">
+          <div
+            key={label}
+            className="rounded-md border border-border-default bg-surface-secondary p-2 text-center"
+          >
             <p className="text-xs text-text-muted">{label}</p>
-            <p className={`text-sm font-bold font-mono mt-0.5 ${value >= 0 ? 'text-status-success' : 'text-status-error'}`}>
+            <p
+              className={`text-sm font-bold font-mono mt-0.5 ${value >= 0 ? 'text-status-success' : 'text-status-error'}`}
+            >
               {fmt(value)}
             </p>
           </div>
@@ -90,10 +105,17 @@ export function SellPTPanel() {
           <label className="text-xs text-text-muted">Producto</label>
           <select
             value={selectedId}
-            onChange={(e) => { setSelectedId(e.target.value); setFeedback(null) }}
+            onChange={(e) => {
+              setSelectedId(e.target.value)
+              setFeedback(null)
+            }}
             className="rounded border border-border-default bg-surface-secondary px-2 py-1.5 text-xs text-text-primary focus:border-accent-primary focus:outline-none"
           >
-            {PT_ITEMS.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+            {PT_ITEMS.map((i) => (
+              <option key={i.id} value={i.id}>
+                {i.name}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -105,7 +127,11 @@ export function SellPTPanel() {
               min={1}
               max={Math.floor(available)}
               value={qty}
-              onChange={(e) => { setQty(Number(e.target.value)); setFeedback(null) }}
+              onChange={(e) => {
+                setQty(Number(e.target.value))
+                setFeedback(null)
+              }}
+              data-tutorial-target="sell-qty-input"
               className="rounded border border-border-default bg-surface-secondary px-2 py-1.5 text-xs text-text-primary focus:border-accent-primary focus:outline-none"
             />
           </div>
@@ -115,7 +141,10 @@ export function SellPTPanel() {
               type="number"
               min={1}
               value={unitPrice}
-              onChange={(e) => { setUnitPrice(Number(e.target.value)); setFeedback(null) }}
+              onChange={(e) => {
+                setUnitPrice(Number(e.target.value))
+                setFeedback(null)
+              }}
               className="rounded border border-border-default bg-surface-secondary px-2 py-1.5 text-xs text-text-primary focus:border-accent-primary focus:outline-none"
             />
           </div>
@@ -124,7 +153,9 @@ export function SellPTPanel() {
         <div className="flex flex-col gap-1 text-xs">
           <div className="flex justify-between text-text-muted">
             <span>Margen/u</span>
-            <span className={`font-mono ${margin >= 0 ? 'text-status-success' : 'text-status-error'}`}>
+            <span
+              className={`font-mono ${margin >= 0 ? 'text-status-success' : 'text-status-error'}`}
+            >
               {fmt(margin)}
             </span>
           </div>
@@ -134,14 +165,18 @@ export function SellPTPanel() {
           </div>
           <div className="flex justify-between text-text-muted">
             <span>Utilidad estimada</span>
-            <span className={`font-mono font-semibold ${totalProfit >= 0 ? 'text-status-success' : 'text-status-error'}`}>
+            <span
+              className={`font-mono font-semibold ${totalProfit >= 0 ? 'text-status-success' : 'text-status-error'}`}
+            >
               {fmt(totalProfit)}
             </span>
           </div>
         </div>
 
         {feedback && (
-          <p className={`text-xs rounded px-2 py-1 ${feedback.startsWith('✓') ? 'text-status-success bg-status-success/10' : 'text-status-error bg-status-error/10'}`}>
+          <p
+            className={`text-xs rounded px-2 py-1 ${feedback.startsWith('✓') ? 'text-status-success bg-status-success/10' : 'text-status-error bg-status-error/10'}`}
+          >
             {feedback}
           </p>
         )}
@@ -150,6 +185,7 @@ export function SellPTPanel() {
           onClick={handleSell}
           disabled={available === 0}
           className="btn-primary text-xs disabled:opacity-40"
+          data-tutorial-target="sell-btn"
         >
           {available === 0 ? 'Sin stock' : 'Vender'}
         </button>

@@ -311,7 +311,7 @@ export class PlantScene extends Phaser.Scene {
   }
 
   clearHighlight(): void {
-    // flashHighlight is self-expiring — no explicit clear needed
+    this.areas.forEach((area) => area.clearHighlight())
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────────

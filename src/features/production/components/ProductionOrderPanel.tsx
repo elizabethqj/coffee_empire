@@ -142,10 +142,15 @@ export function ProductionOrderPanel({ areaId }: Props) {
                 setQty(Number(e.target.value))
                 setFeedback(null)
               }}
+              data-tutorial-target="order-qty-input"
               className="rounded border border-border-default bg-surface-secondary px-2 py-1.5 text-xs text-text-primary focus:border-accent-primary focus:outline-none"
             />
           </div>
-          <button onClick={handleCreate} className="btn-primary text-xs self-end px-4 py-1.5">
+          <button
+            onClick={handleCreate}
+            className="btn-primary text-xs self-end px-4 py-1.5"
+            data-tutorial-target="confirm-order-btn"
+          >
             Iniciar
           </button>
         </div>

@@ -75,9 +75,9 @@ const LevelCompleteModal = lazy(() =>
     default: m.LevelCompleteModal,
   }))
 )
-const OnboardingFlow = lazy(() =>
-  import('@/features/education/components/OnboardingFlow').then((m) => ({
-    default: m.OnboardingFlow,
+const GuidedTutorial = lazy(() =>
+  import('@/features/education/components/GuidedTutorial').then((m) => ({
+    default: m.GuidedTutorial,
   }))
 )
 
@@ -196,7 +196,10 @@ function PanelSidebar() {
   if (!activePanel) return null
 
   return (
-    <aside className="w-72 xl:w-80 shrink-0 flex flex-col border-l border-border-default bg-surface-card overflow-hidden">
+    <aside
+      data-tutorial-panel="sidebar"
+      className="w-72 xl:w-80 shrink-0 flex flex-col border-l border-border-default bg-surface-card overflow-hidden"
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border-default shrink-0">
         <h2 className="text-sm font-bold text-text-primary font-mono truncate">
@@ -259,7 +262,7 @@ export function GamePage() {
         <AchievementToast />
       </Suspense>
       <Suspense fallback={null}>
-        <OnboardingFlow />
+        <GuidedTutorial />
       </Suspense>
       <Suspense fallback={null}>
         <LiquidityModal />

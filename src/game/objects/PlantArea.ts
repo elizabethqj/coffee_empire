@@ -308,29 +308,54 @@ export class PlantArea extends Phaser.GameObjects.Container {
     })
   }
 
+  /**
+   * Flash-highlight this area.
+   * Pass durationMs = -1 for an infinite pulsing glow (used by the guided tutorial).
+   * Pass a positive value (ms) for a single fade-out (used by onboarding).
+   */
   flashHighlight(durationMs = 1500): void {
-    if (this.highlightTween) {
-      this.highlightTween.stop()
-      this.highlightRect?.destroy()
-    }
+    this.clearHighlight()
 
     this.highlightRect = this.scene.add.graphics()
-    this.highlightRect.lineStyle(2, 0xfbbf24, 1)
-    this.highlightRect.strokeRect(-W / 2, -H / 2, W, H)
+    this.highlightRect.lineStyle(3, 0xfbbf24, 1)
+    this.highlightRect.strokeRect(-W / 2 - 3, -H / 2 - 3, W + 6, H + 6)
     this.highlightRect.setPosition(this.x, this.y)
-    this.highlightRect.setDepth(2)
+    this.highlightRect.setDepth(3)
 
-    this.highlightTween = this.scene.tweens.add({
-      targets: this.highlightRect,
-      alpha: 0,
-      duration: durationMs,
-      ease: 'Sine.easeInOut',
-      onComplete: () => {
-        this.highlightRect?.destroy()
-        this.highlightRect = null
-        this.highlightTween = null
-      },
-    })
+    if (durationMs < 0) {
+      // Infinite pulse for guided tutorial
+      this.highlightTween = this.scene.tweens.add({
+        targets: this.highlightRect,
+        alpha: { from: 0.25, to: 1 },
+        duration: 700,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      })
+    } else {
+      this.highlightTween = this.scene.tweens.add({
+        targets: this.highlightRect,
+        alpha: 0,
+        duration: durationMs,
+        ease: 'Sine.easeInOut',
+        onComplete: () => {
+          this.highlightRect?.destroy()
+          this.highlightRect = null
+          this.highlightTween = null
+        },
+      })
+    }
+  }
+
+  clearHighlight(): void {
+    if (this.highlightTween) {
+      this.highlightTween.stop()
+      this.highlightTween = null
+    }
+    if (this.highlightRect) {
+      this.highlightRect.destroy()
+      this.highlightRect = null
+    }
   }
 
   private startPulse(): void {

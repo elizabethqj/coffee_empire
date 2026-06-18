@@ -114,6 +114,7 @@ export function PurchaseMPPanel() {
               max={space}
               value={qty}
               onChange={(e) => setQty(Number(e.target.value))}
+              data-tutorial-target="mp-qty-input"
               className="rounded border border-border-default bg-surface-secondary px-2 py-1.5 text-xs text-text-primary focus:border-accent-primary focus:outline-none"
             />
           </div>
@@ -142,7 +143,7 @@ export function PurchaseMPPanel() {
           </p>
         )}
 
-        <button onClick={handleBuy} className="btn-primary text-xs">
+        <button onClick={handleBuy} className="btn-primary text-xs" data-tutorial-target="buy-btn">
           Comprar
         </button>
       </div>
